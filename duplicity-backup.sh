@@ -205,15 +205,24 @@ DUPLICITY="$(which duplicity)"
 # the script is running at a time.
 LOCKFILE=${LOGDIR}backup.lock
 
+# Splits a comma separated line into lines, respects escaped commas
+function gpg_split_keyset {
+  local LIST
+  LIST=$(echo "$@" | awk '{ gsub(/,/,"\n",$0); gsub(/\\\n/,",",$0); print $0 }')
+  echo -e "$LIST"
+}
+
+
 if [ "$ENCRYPTION" = "yes" ]; then
   if [ ! -z "$GPG_ENC_KEY" ] && [ ! -z "$GPG_SIGN_KEY" ]; then
+    GPG_ENC_KEYS_ARRAY=( $( gpg_split_keyset ${GPG_ENC_KEY} ) )
     if [ "$HIDE_KEY_ID" = "yes" ]; then
-      ENCRYPT="--hidden-encrypt-key=${GPG_ENC_KEY}"
+      ENCRYPT="--hidden-encrypt-key=${GPG_ENC_KEYS_ARRAY[@]}"
       if [ "$COMMAND" != "restore" -a "$COMMAND" != "restore-file" -a "$COMMAND" != "restore-dir" ]; then
         ENCRYPT="$ENCRYPT --sign-key=${GPG_SIGN_KEY}"
       fi
     else
-      ENCRYPT="--encrypt-key=${GPG_ENC_KEY} --sign-key=${GPG_SIGN_KEY}"
+      ENCRYPT="--encrypt-key=${GPG_ENC_KEYS_ARRAY[@]} --sign-key=${GPG_SIGN_KEY}"
     fi
     if [ ! -z "$SECRET_KEYRING" ]; then
       KEYRING="--secret-keyring ${SECRET_KEYRING}"
